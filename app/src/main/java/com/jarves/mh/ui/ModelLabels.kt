@@ -26,6 +26,10 @@ fun ProviderKind.titleRes(): Int = when (this) {
     ProviderKind.KIMI -> R.string.provider_title_kimi
     ProviderKind.OPENCODE_ZEN -> R.string.provider_title_opencode
     ProviderKind.NVIDIA_NIM -> R.string.provider_title_nvidia
+    ProviderKind.XAI_GROK -> R.string.provider_title_xai
+    ProviderKind.OPENAI -> R.string.provider_title_openai
+    ProviderKind.GROQ -> R.string.provider_title_groq
+    ProviderKind.GEMINI -> R.string.provider_title_gemini
     ProviderKind.CUSTOM -> R.string.provider_title_custom
 }
 
@@ -38,6 +42,10 @@ fun ProviderKind.subtitleRes(): Int = when (this) {
     ProviderKind.KIMI, ProviderKind.CUSTOM -> R.string.provider_subtitle_anthropic_compatible
     ProviderKind.OPENCODE_ZEN -> R.string.provider_subtitle_opencode
     ProviderKind.NVIDIA_NIM -> R.string.provider_subtitle_nvidia
+    ProviderKind.XAI_GROK -> R.string.provider_subtitle_xai
+    ProviderKind.OPENAI -> R.string.provider_subtitle_openai
+    ProviderKind.GROQ -> R.string.provider_subtitle_groq
+    ProviderKind.GEMINI -> R.string.provider_subtitle_gemini
 }
 
 @StringRes
@@ -45,6 +53,7 @@ fun AgentKind.titleRes(): Int = when (this) {
     AgentKind.CLAUDE_CODE -> R.string.agent_title_claude
     AgentKind.DEEPSEEK_HARNESS -> R.string.agent_title_deepseek
     AgentKind.ANTIGRAVITY -> R.string.agent_title_antigravity
+    AgentKind.MINI_SWE_AGENT -> R.string.agent_title_mini_swe_agent
 }
 
 @StringRes
@@ -52,6 +61,7 @@ fun AgentKind.subtitleRes(): Int = when (this) {
     AgentKind.CLAUDE_CODE -> R.string.agent_subtitle_claude
     AgentKind.DEEPSEEK_HARNESS -> R.string.agent_subtitle_deepseek
     AgentKind.ANTIGRAVITY -> R.string.agent_subtitle_antigravity
+    AgentKind.MINI_SWE_AGENT -> R.string.agent_subtitle_mini_swe_agent
 }
 
 @StringRes

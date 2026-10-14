@@ -1542,6 +1542,7 @@ private const val CORE_RUNTIME_DOWNLOAD_MB = 69
 private const val CLAUDE_RUNTIME_DOWNLOAD_MB = 72
 private const val DSH_RUNTIME_DOWNLOAD_MB = 27
 private const val AGY_RUNTIME_DOWNLOAD_MB = 40
+private const val MINI_SWE_RUNTIME_DOWNLOAD_MB = 30
 private const val PYTHON_RUNTIME_DOWNLOAD_MB = 55
 private const val ANDROID_RUNTIME_DOWNLOAD_MB = 570
 
@@ -1585,6 +1586,7 @@ private fun toolchainDownloadSummary(selected: Set<DevStack>, agent: AgentKind):
             AgentKind.CLAUDE_CODE -> CLAUDE_RUNTIME_DOWNLOAD_MB
             AgentKind.DEEPSEEK_HARNESS -> DSH_RUNTIME_DOWNLOAD_MB
             AgentKind.ANTIGRAVITY -> AGY_RUNTIME_DOWNLOAD_MB
+            AgentKind.MINI_SWE_AGENT -> MINI_SWE_RUNTIME_DOWNLOAD_MB
         } +
         (if (DevStack.PYTHON in selected) PYTHON_RUNTIME_DOWNLOAD_MB else 0) +
         (if (DevStack.ANDROID in selected) ANDROID_RUNTIME_DOWNLOAD_MB else 0)
@@ -1674,11 +1676,13 @@ private fun AgentChoiceRow(
         AgentKind.CLAUDE_CODE -> Color(0xFFD97757)
         AgentKind.DEEPSEEK_HARNESS -> Color(0xFF4D6BFE)
         AgentKind.ANTIGRAVITY -> Color(0xFF4285F4)
+        AgentKind.MINI_SWE_AGENT -> Color(0xFF7C3AED)
     }
     val mark = when (agent) {
         AgentKind.CLAUDE_CODE -> "CC"
         AgentKind.DEEPSEEK_HARNESS -> "DS"
         AgentKind.ANTIGRAVITY -> "AG"
+        AgentKind.MINI_SWE_AGENT -> "MS"
     }
     Row(
         modifier = Modifier
@@ -3081,6 +3085,10 @@ private fun providerTitleResource(provider: ProviderKind): Int = when (provider)
     ProviderKind.KIMI -> R.string.provider_title_kimi
     ProviderKind.OPENCODE_ZEN -> R.string.provider_title_opencode
     ProviderKind.NVIDIA_NIM -> R.string.provider_title_nvidia
+    ProviderKind.XAI_GROK -> R.string.provider_title_xai
+    ProviderKind.OPENAI -> R.string.provider_title_openai
+    ProviderKind.GROQ -> R.string.provider_title_groq
+    ProviderKind.GEMINI -> R.string.provider_title_gemini
     ProviderKind.CUSTOM -> R.string.provider_title_custom
 }
 
@@ -3093,6 +3101,10 @@ private fun providerSubtitleResource(provider: ProviderKind): Int = when (provid
     ProviderKind.KIMI, ProviderKind.CUSTOM -> R.string.provider_subtitle_anthropic_compatible
     ProviderKind.OPENCODE_ZEN -> R.string.provider_subtitle_opencode
     ProviderKind.NVIDIA_NIM -> R.string.provider_subtitle_nvidia
+    ProviderKind.XAI_GROK -> R.string.provider_subtitle_xai
+    ProviderKind.OPENAI -> R.string.provider_subtitle_openai
+    ProviderKind.GROQ -> R.string.provider_subtitle_groq
+    ProviderKind.GEMINI -> R.string.provider_subtitle_gemini
 }
 
 @Composable
@@ -3109,6 +3121,10 @@ private fun ProviderChoiceRow(
         ProviderKind.KIMI -> Color(0xFF8B7CF6)
         ProviderKind.OPENCODE_ZEN -> Color(0xFF22C55E)
         ProviderKind.NVIDIA_NIM -> Color(0xFF76B900)
+        ProviderKind.XAI_GROK -> Color(0xFF9CA3AF)
+        ProviderKind.OPENAI -> Color(0xFF10A37F)
+        ProviderKind.GROQ -> Color(0xFFF55036)
+        ProviderKind.GEMINI -> Color(0xFF4285F4)
         ProviderKind.CUSTOM -> PocketOrange
     }
     val mark = when (provider) {
@@ -3119,6 +3135,10 @@ private fun ProviderChoiceRow(
         ProviderKind.KIMI -> "K"
         ProviderKind.OPENCODE_ZEN -> "Z"
         ProviderKind.NVIDIA_NIM -> "NV"
+        ProviderKind.XAI_GROK -> "xAI"
+        ProviderKind.OPENAI -> "AI"
+        ProviderKind.GROQ -> "GQ"
+        ProviderKind.GEMINI -> "G"
         ProviderKind.CUSTOM -> "<>"
     }
 

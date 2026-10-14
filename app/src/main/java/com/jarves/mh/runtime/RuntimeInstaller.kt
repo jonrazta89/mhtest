@@ -74,6 +74,7 @@ class RuntimeInstaller(private val context: Context) {
     private val devStacksFile = File(rootfs, ".pocket-dev-stacks.json")
     private val dshMarker = File(rootfs, ".pocket-dsh-version")
     private val agyMarker = File(rootfs, ".pocket-agy-version")
+    private val miniSweMarker = File(rootfs, ".pocket-mini-swe-agent-version")
     private val githubCliMarker = File(rootfs, ".pocket-github-cli-version")
     private val dshAndroidCompatibilityMarker = File(rootfs, ".pocket-dsh-android-compat-version")
     private val macosMetadataRepairMarker = File(rootfs, ".pocket-macos-metadata-repair")
@@ -236,6 +237,7 @@ class RuntimeInstaller(private val context: Context) {
             com.jarves.mh.model.AgentKind.CLAUDE_CODE -> ensureClaudeInstalled(proot, 0.985f, onProgress)
             com.jarves.mh.model.AgentKind.DEEPSEEK_HARNESS -> ensureDshInstalled(proot, 0.985f, onProgress)
             com.jarves.mh.model.AgentKind.ANTIGRAVITY -> ensureAgyInstalled(proot, 0.985f, onProgress)
+            com.jarves.mh.model.AgentKind.MINI_SWE_AGENT -> ensureMiniSweAgentInstalled(proot, 0.985f, onProgress)
         }
         onProgress(RuntimeInstallProgress(str(R.string.rt_install_setup_complete), 1f))
         return InstalledRuntime(proot, rootfs)
@@ -255,6 +257,7 @@ class RuntimeInstaller(private val context: Context) {
             com.jarves.mh.model.AgentKind.CLAUDE_CODE -> ensureClaudeInstalled(runtime.proot, 0.05f, onProgress)
             com.jarves.mh.model.AgentKind.DEEPSEEK_HARNESS -> ensureDshInstalled(runtime.proot, 0.05f, onProgress)
             com.jarves.mh.model.AgentKind.ANTIGRAVITY -> ensureAgyInstalled(runtime.proot, 0.05f, onProgress)
+            com.jarves.mh.model.AgentKind.MINI_SWE_AGENT -> ensureMiniSweAgentInstalled(runtime.proot, 0.05f, onProgress)
         }
         onProgress(RuntimeInstallProgress(str(R.string.rt_install_ready, agent.localizedTitle(context)), 1f))
     }
@@ -274,6 +277,9 @@ class RuntimeInstaller(private val context: Context) {
             com.jarves.mh.model.AgentKind.ANTIGRAVITY -> isInstalled() &&
                 File(rootfs, AGY_GUEST_PATH.removePrefix("/")).canExecute() &&
                 !agyMarker.readTextOrNull().isNullOrBlank()
+            com.jarves.mh.model.AgentKind.MINI_SWE_AGENT -> isInstalled() &&
+                File(rootfs, "usr/local/bin/mini_bridge.py").canExecute() &&
+                !miniSweMarker.readTextOrNull().isNullOrBlank()
         }
     }
 
@@ -402,6 +408,7 @@ class RuntimeInstaller(private val context: Context) {
             com.jarves.mh.model.AgentKind.CLAUDE_CODE -> updateClaude(runtime, expectedVersion, onProgress)
             com.jarves.mh.model.AgentKind.DEEPSEEK_HARNESS -> updateDsh(runtime, expectedVersion, onProgress)
             com.jarves.mh.model.AgentKind.ANTIGRAVITY -> updateAgy(runtime, expectedVersion, onProgress)
+            com.jarves.mh.model.AgentKind.MINI_SWE_AGENT -> ensureMiniSweAgentInstalled(runtime.proot, 0.05f, onProgress)
         }
         onProgress(RuntimeInstallProgress(str(R.string.rt_install_version_ready, agent.localizedTitle(context), expectedVersion), 1f, event = RuntimeInstallEvent.COMPLETED))
     }
@@ -635,7 +642,162 @@ class RuntimeInstaller(private val context: Context) {
         }
     }
 
-    /**
+        private val MINI_SWE_AGENT_VERSION = "4"
+
+    private val MINI_BRIDGE_PY_SOURCE = """
+#!/usr/bin/env python3
+# mini_bridge.py - wraps mini-swe-agent (v2 API) and emits JSONL events
+# matching the shape MiniEventParser (in MiniSweAgentRuntimeBridge.kt) reads.
+# Talks to any OpenAI-style /chat/completions endpoint over plain requests,
+# so litellm and openai are not needed.
+import json
+import pathlib
+import re
+import sys
+
+import requests
+import yaml
+
+import minisweagent
+from minisweagent.agents.default import DefaultAgent
+from minisweagent.environments.local import LocalEnvironment
+from minisweagent.models import openrouter_model as om
+
+
+def emit(event):
+    print(json.dumps(event), flush=True)
+
+
+def openai_base(url):
+    u = (url or "").strip().rstrip("/")
+    if u.endswith("/anthropic"):
+        u = u[: -len("/anthropic")]
+    if not re.search(r"/(?:v[0-9]+|v1beta/openai)\Z", u):
+        u = u + "/v1"
+    return u
+
+
+class OpenAICompatModel(om.OpenRouterModel):
+    def __init__(self, base_url, api_key, **kw):
+        kw.setdefault("cost_tracking", "ignore_errors")
+        super().__init__(**kw)
+        self._api_url = openai_base(base_url) + "/chat/completions"
+        self._api_key = api_key
+
+    def _query(self, messages, **kwargs):
+        headers = {
+            "Authorization": "Bearer " + self._api_key,
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "model": self.config.model_name,
+            "messages": messages,
+            "tools": [om.BASH_TOOL],
+            **(self.config.model_kwargs | kwargs),
+        }
+        try:
+            r = requests.post(self._api_url, headers=headers, data=json.dumps(payload), timeout=120)
+        except requests.exceptions.RequestException as e:
+            raise om.OpenRouterAPIError("Request failed: " + str(e)) from e
+        if r.status_code == 401:
+            raise om.OpenRouterAuthenticationError("Authentication failed (HTTP 401). Check the API key.")
+        if r.status_code == 402:
+            raise om.OpenRouterAuthenticationError("Insufficient balance (HTTP 402). Top up your API account.")
+        if r.status_code == 429:
+            raise om.OpenRouterRateLimitError("Rate limit exceeded")
+        if not r.ok:
+            raise om.OpenRouterAPIError("HTTP " + str(r.status_code) + ": " + r.text[:500])
+        return r.json()
+
+
+def load_config():
+    path = pathlib.Path(minisweagent.__file__).parent / "config" / "mini.yaml"
+    with open(path) as f:
+        return yaml.safe_load(f) or {}
+
+
+def main():
+    request = json.loads(sys.stdin.readline())
+    task = request["message"]["content"]
+    model_name = request["model"]
+    workdir = request.get("workdir", ".")
+    api_key = request.get("api_key", "")
+    if not api_key:
+        emit({"event": "result", "status": "ERROR", "error": "No API key was provided"})
+        return
+
+    cfg = load_config()
+    agent_cfg = cfg.get("agent", {})
+    model_cfg = cfg.get("model", {})
+    env_cfg = cfg.get("environment", {})
+
+    env = LocalEnvironment(cwd=workdir, env=env_cfg.get("env", {}))
+    model_kwargs = {
+        k: model_cfg[k] for k in ("observation_template", "format_error_template") if k in model_cfg
+    }
+    model = OpenAICompatModel(request.get("base_url", ""), api_key, model_name=model_name, **model_kwargs)
+    agent_kwargs = {k: agent_cfg[k] for k in ("system_template", "instance_template") if k in agent_cfg}
+    agent_kwargs["step_limit"] = int(agent_cfg.get("step_limit") or 60)
+    agent = DefaultAgent(model, env, **agent_kwargs)
+
+    orig_execute = env.execute
+
+    def traced_execute(action, *a, **kw):
+        command = action.get("command", "") if isinstance(action, dict) else str(action)
+        emit({"event": "tool_started", "name": "Bash", "detail": command})
+        try:
+            return orig_execute(action, *a, **kw)
+        finally:
+            emit({"event": "tool_completed", "name": "Bash", "detail": command})
+
+    env.execute = traced_execute
+
+    try:
+        result = agent.run(task)
+        status = result.get("exit_status", "")
+        submission = result.get("submission", "") or ""
+        if submission:
+            emit({"event": "text", "value": submission})
+        if status == "Submitted":
+            emit({"event": "result", "status": "SUCCESS", "response": submission})
+        else:
+            emit({"event": "result", "status": "ERROR", "error": "Agent stopped: " + str(status)})
+    except Exception as e:
+        emit({"event": "result", "status": "ERROR", "error": str(e)})
+
+
+if __name__ == "__main__":
+    main()
+"""
+
+    private suspend fun ensureMiniSweAgentInstalled(
+        proot: File,
+        fraction: Float,
+        onProgress: suspend (RuntimeInstallProgress) -> Unit,
+    ) {
+        if (isAgentInstalled(com.jarves.mh.model.AgentKind.MINI_SWE_AGENT)) return
+        ensureStackInstalled(DevStack.PYTHON) { progress ->
+            onProgress(RuntimeInstallProgress(progress.message, fraction * 0.5f, indeterminate = true))
+        }
+        onProgress(RuntimeInstallProgress("Installing mini-swe-agent", fraction * 0.6f, indeterminate = true))
+        verifyGuest(
+            proot,
+            "python3 -c \"import minisweagent\" && echo mini-swe-agent-preinstalled",
+            "mini-swe-agent could not be installed",
+        )
+        onProgress(RuntimeInstallProgress("Installing the mini-swe-agent bridge script", fraction * 0.85f, indeterminate = true))
+        val bridgeScript = File(rootfs, "usr/local/bin/mini_bridge.py")
+        bridgeScript.parentFile?.mkdirs()
+        bridgeScript.writeText(MINI_BRIDGE_PY_SOURCE)
+        Os.chmod(bridgeScript.absolutePath, 0b111101101)
+        verifyGuest(proot, "python3 -c \"import minisweagent\"", "mini-swe-agent verification failed")
+        miniSweMarker.writeText(MINI_SWE_AGENT_VERSION)
+        require(isAgentInstalled(com.jarves.mh.model.AgentKind.MINI_SWE_AGENT)) {
+            "mini-swe-agent installation is incomplete"
+        }
+    }
+
+/**
      * DSH uses POSIX hard links for no-clobber publication of new session and
      * workspace files. Android blocks that syscall inside PRoot. PRoot's
      * `--link2symlink` workaround is unsuitable here because DSH immediately
