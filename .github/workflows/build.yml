@@ -9,7 +9,6 @@ on:
 
 env:
   GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-cache
-  ANDROID_HOME: ${{ github.workspace }}/android-sdk
 
 jobs:
   #----------------------------------------------------------------------
@@ -37,13 +36,13 @@ jobs:
           cache: gradle
 
       - name: Accept Android SDK licenses
-        # setup-android's accept-android-sdk-licenses flag alone still prompts
-        # interactively in some runner images. Write the license file up front so
-        # sdkmanager never has to ask.
+        # The runner ships a preinstalled SDK at /usr/local/lib/android/sdk and
+        # setup-android uses it regardless of $ANDROID_HOME. Write the license
+        # file there up front so sdkmanager never has to ask interactively.
         run: |
-          mkdir -p "$ANDROID_HOME/licenses"
-          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > "$ANDROID_HOME/licenses/android-sdk-license"
-          echo "8933f1a4607e983d6c1e8eb079c3ed6f1034b98b" >> "$ANDROID_HOME/licenses/android-sdk-license"
+          mkdir -p /usr/local/lib/android/sdk/licenses
+          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > /usr/local/lib/android/sdk/licenses/android-sdk-license
+          echo "8933f1a4607e983d6c1e8eb079c3ed6f1034b98b" >> /usr/local/lib/android/sdk/licenses/android-sdk-license
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
@@ -106,13 +105,13 @@ jobs:
           cache: gradle
 
       - name: Accept Android SDK licenses
-        # setup-android's accept-android-sdk-licenses flag alone still prompts
-        # interactively in some runner images. Write the license file up front so
-        # sdkmanager never has to ask.
+        # The runner ships a preinstalled SDK at /usr/local/lib/android/sdk and
+        # setup-android uses it regardless of $ANDROID_HOME. Write the license
+        # file there up front so sdkmanager never has to ask interactively.
         run: |
-          mkdir -p "$ANDROID_HOME/licenses"
-          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > "$ANDROID_HOME/licenses/android-sdk-license"
-          echo "8933f1a4607e983d6c1e8eb079c3ed6f1034b98b" >> "$ANDROID_HOME/licenses/android-sdk-license"
+          mkdir -p /usr/local/lib/android/sdk/licenses
+          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > /usr/local/lib/android/sdk/licenses/android-sdk-license
+          echo "8933f1a4607e983d6c1e8eb079c3ed6f1034b98b" >> /usr/local/lib/android/sdk/licenses/android-sdk-license
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
