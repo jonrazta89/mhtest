@@ -10,7 +10,6 @@ on:
 env:
   GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-cache
   ANDROID_HOME: ${{ github.workspace }}/android-sdk
-  TMPDIR: ${{ runner.temp }}
 
 jobs:
   #----------------------------------------------------------------------
