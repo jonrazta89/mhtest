@@ -15,8 +15,9 @@ env:
 jobs:
   #----------------------------------------------------------------------
   # Debug build — always runs, no signing secrets required.
-  # Produces an unsigned debug APK (AGP signs debug builds with the default
-  # debug keystore). Safe to run on pull requests from forks.
+# Produces an unsigned debug APK (AGP signs debug builds with the default
+# debug keystore). Safe to run on pull requests from forks.
+# (re-triggered to confirm the workflow runs after the push-time race)
   #----------------------------------------------------------------------
   debug:
     name: Build offline debug APK
