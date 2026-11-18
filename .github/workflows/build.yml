@@ -9,6 +9,7 @@ on:
 
 env:
   GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-cache
+  ANDROID_HOME: /usr/local/lib/android/sdk
 
 jobs:
   #----------------------------------------------------------------------
@@ -36,16 +37,13 @@ jobs:
           cache: gradle
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v4
-        with:
-          api-level: 36            # matches compileSdk = 36
-          build-tools-version: 36.0.0
-          ndk-version: 28.2.13676358 # default ndkVersion in app/build.gradle.kts
-          cmake-version: 3.22.1
-          packages: platform-tools platforms;android-36 platforms;android-28 build-tools;36.0.0 ndk;28.2.13676358 cmake;3.22.1
-
-      - name: Accept Android SDK licenses
-        run: yes | sdkmanager --licenses || true
+        run: |
+          # The runner ships a preinstalled Android SDK at /usr/local/lib/android/sdk.
+          # Accept all licenses non-interactively, then install the packages we need.
+          export ANDROID_HOME=/usr/local/lib/android/sdk
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
+          yes | sdkmanager --licenses || true
+          sdkmanager --sdk_root="$ANDROID_HOME" "platform-tools" "platforms;android-36" "platforms;android-28" "build-tools;36.0.0" "ndk;28.2.13676358" "cmake;3.22.1"
 
       - name: Write local.properties
         run: echo "sdk.dir=${ANDROID_HOME}" > local.properties
@@ -98,16 +96,13 @@ jobs:
           cache: gradle
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v4
-        with:
-          api-level: 36            # matches compileSdk = 36
-          build-tools-version: 36.0.0
-          ndk-version: 28.2.13676358 # default ndkVersion in app/build.gradle.kts
-          cmake-version: 3.22.1
-          packages: platform-tools platforms;android-36 platforms;android-28 build-tools;36.0.0 ndk;28.2.13676358 cmake;3.22.1
-
-      - name: Accept Android SDK licenses
-        run: yes | sdkmanager --licenses || true
+        run: |
+          # The runner ships a preinstalled Android SDK at /usr/local/lib/android/sdk.
+          # Accept all licenses non-interactively, then install the packages we need.
+          export ANDROID_HOME=/usr/local/lib/android/sdk
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
+          yes | sdkmanager --licenses || true
+          sdkmanager --sdk_root="$ANDROID_HOME" "platform-tools" "platforms;android-36" "platforms;android-28" "build-tools;36.0.0" "ndk;28.2.13676358" "cmake;3.22.1"
 
       - name: Write local.properties
         run: echo "sdk.dir=${ANDROID_HOME}" > local.properties
