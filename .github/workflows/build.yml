@@ -77,12 +77,7 @@ jobs:
   release:
     name: Build offline release APK
     needs: debug
-    if: >
-      github.event_name != 'pull_request' &&
-      secrets.MH_UPLOAD_STORE_FILE != '' &&
-      secrets.MH_UPLOAD_STORE_PASSWORD != '' &&
-      secrets.MH_UPLOAD_KEY_ALIAS != '' &&
-      secrets.MH_UPLOAD_KEY_PASSWORD != ''
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
@@ -120,6 +115,19 @@ jobs:
 
       - name: Make gradlew executable
         run: chmod +x gradlew
+
+      - name: Check signing secrets
+        # GitHub forbids secrets.* in job-level if: expressions, so we gate
+        # the build here instead. Exit cleanly when any secret is missing.
+        run: |
+          if [ -z "${{ secrets.MH_UPLOAD_STORE_FILE }}" ] || \
+             [ -z "${{ secrets.MH_UPLOAD_STORE_PASSWORD }}" ] || \
+             [ -z "${{ secrets.MH_UPLOAD_KEY_ALIAS }}" ] || \
+             [ -z "${{ secrets.MH_UPLOAD_KEY_PASSWORD }}" ]; then
+            echo "Release signing secrets are not set; skipping release build."
+            exit 0
+          fi
+          echo "Release signing secrets are present; building signed release APK."
 
       - name: Build offline release APK
         env:
