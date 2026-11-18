@@ -1,0 +1,138 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  GRADLE_USER_HOME: ${{ github.workspace }}/.gradle-cache
+  ANDROID_HOME: ${{ github.workspace }}/android-sdk
+  TMPDIR: ${{ runner.temp }}
+
+jobs:
+  #----------------------------------------------------------------------
+  # Debug build — always runs, no signing secrets required.
+  # Produces an unsigned debug APK (AGP signs debug builds with the default
+  # debug keystore). Safe to run on pull requests from forks.
+  #----------------------------------------------------------------------
+  debug:
+    name: Build offline debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          api-level: 36            # matches compileSdk = 36
+          build-tools-version: 36.0.0
+          ndk-version: 28.2.13676358 # default ndkVersion in app/build.gradle.kts
+          cmake-version: 3.22.1
+
+      - name: Write local.properties
+        run: echo "sdk.dir=${ANDROID_HOME}" > local.properties
+
+      - name: Optional test-secrets.properties
+        run: |
+          if [ -n "${{ secrets.OPENROUTER_API_KEY }}" ]; then
+            printf 'openrouter.apiKey=%s\n' "${{ secrets.OPENROUTER_API_KEY }}" > test-secrets.properties
+          else
+            touch test-secrets.properties
+          fi
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Build offline debug APK
+        run: ./gradlew assembleOfflineDebug --no-daemon
+
+      - name: Upload debug APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-offline-debug-apk
+          path: app/build/outputs/apk/offline/debug/app-offline-debug.apk
+          retention-days: 30
+          if-no-files-found: error
+
+  #----------------------------------------------------------------------
+  # Release build — signed with the "upload" signing config.
+  # Only runs when all four MH_UPLOAD_* secrets are provided. Skipped on
+  # fork pull requests (secrets are not available there).
+  #----------------------------------------------------------------------
+  release:
+    name: Build offline release APK
+    needs: debug
+    if: >
+      github.event_name != 'pull_request' &&
+      secrets.MH_UPLOAD_STORE_FILE != '' &&
+      secrets.MH_UPLOAD_STORE_PASSWORD != '' &&
+      secrets.MH_UPLOAD_KEY_ALIAS != '' &&
+      secrets.MH_UPLOAD_KEY_PASSWORD != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          api-level: 36
+          build-tools-version: 36.0.0
+          ndk-version: 28.2.13676358
+          cmake-version: 3.22.1
+
+      - name: Write local.properties
+        run: echo "sdk.dir=${ANDROID_HOME}" > local.properties
+
+      - name: Optional test-secrets.properties
+        run: |
+          if [ -n "${{ secrets.OPENROUTER_API_KEY }}" ]; then
+            printf 'openrouter.apiKey=%s\n' "${{ secrets.OPENROUTER_API_KEY }}" > test-secrets.properties
+          else
+            touch test-secrets.properties
+          fi
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Build offline release APK
+        env:
+          MH_UPLOAD_STORE_FILE: ${{ secrets.MH_UPLOAD_STORE_FILE }}
+          MH_UPLOAD_STORE_PASSWORD: ${{ secrets.MH_UPLOAD_STORE_PASSWORD }}
+          MH_UPLOAD_KEY_ALIAS: ${{ secrets.MH_UPLOAD_KEY_ALIAS }}
+          MH_UPLOAD_KEY_PASSWORD: ${{ secrets.MH_UPLOAD_KEY_PASSWORD }}
+        run: ./gradlew assembleOfflineRelease --no-daemon
+
+      - name: Upload release APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-offline-release-apk
+          path: app/build/outputs/apk/offline/release/app-offline-release.apk
+          retention-days: 30
+          if-no-files-found: error
