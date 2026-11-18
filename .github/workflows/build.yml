@@ -58,6 +58,20 @@ jobs:
       - name: Write local.properties
         run: echo "sdk.dir=${ANDROID_HOME}" > local.properties
 
+      - name: Optional test-secrets.properties
+        run: |
+          if [ -n "${{ secrets.OPENROUTER_API_KEY }}" ]; then
+            printf 'openrouter.apiKey=%s\n' "${{ secrets.OPENROUTER_API_KEY }}" > test-secrets.properties
+          else
+            touch test-secrets.properties
+          fi
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Build offline debug APK
+        run: ./gradlew assembleOfflineDebug --no-daemon
+
       - name: Upload debug APK artifact
         uses: actions/upload-artifact@v4
         with:
