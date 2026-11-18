@@ -39,10 +39,13 @@ jobs:
       - name: Set up Android SDK
         run: |
           # The runner ships a preinstalled Android SDK at /usr/local/lib/android/sdk.
-          # Accept all licenses non-interactively, then install the packages we need.
+          # Write accepted license files directly (sdkmanager reads from /dev/tty,
+          # so piping 'yes' to --licenses does not work).
           export ANDROID_HOME=/usr/local/lib/android/sdk
           export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
-          yes | sdkmanager --licenses || true
+          mkdir -p "$ANDROID_HOME/licenses"
+          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > "$ANDROID_HOME/licenses/android-sdk-license"
+          echo "d56f517547893c7e97b0f9e60828b3e2" >> "$ANDROID_HOME/licenses/android-sdk-license"
           sdkmanager --sdk_root="$ANDROID_HOME" "platform-tools" "platforms;android-36" "platforms;android-28" "build-tools;36.0.0" "ndk;28.2.13676358" "cmake;3.22.1"
 
       - name: Write local.properties
@@ -98,10 +101,13 @@ jobs:
       - name: Set up Android SDK
         run: |
           # The runner ships a preinstalled Android SDK at /usr/local/lib/android/sdk.
-          # Accept all licenses non-interactively, then install the packages we need.
+          # Write accepted license files directly (sdkmanager reads from /dev/tty,
+          # so piping 'yes' to --licenses does not work).
           export ANDROID_HOME=/usr/local/lib/android/sdk
           export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
-          yes | sdkmanager --licenses || true
+          mkdir -p "$ANDROID_HOME/licenses"
+          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > "$ANDROID_HOME/licenses/android-sdk-license"
+          echo "d56f517547893c7e97b0f9e60828b3e2" >> "$ANDROID_HOME/licenses/android-sdk-license"
           sdkmanager --sdk_root="$ANDROID_HOME" "platform-tools" "platforms;android-36" "platforms;android-28" "build-tools;36.0.0" "ndk;28.2.13676358" "cmake;3.22.1"
 
       - name: Write local.properties
