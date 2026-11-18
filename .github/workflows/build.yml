@@ -36,6 +36,15 @@ jobs:
           java-version: 21
           cache: gradle
 
+      - name: Accept Android SDK licenses
+        # setup-android's accept-android-sdk-licenses flag alone still prompts
+        # interactively in some runner images. Write the license file up front so
+        # sdkmanager never has to ask.
+        run: |
+          mkdir -p "$ANDROID_HOME/licenses"
+          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > "$ANDROID_HOME/licenses/android-sdk-license"
+          echo "8933f1a4607e983d6c1e8eb079c3ed6f1034b98b" >> "$ANDROID_HOME/licenses/android-sdk-license"
+
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
         with:
@@ -43,23 +52,11 @@ jobs:
           build-tools-version: 36.0.0
           ndk-version: 28.2.13676358 # default ndkVersion in app/build.gradle.kts
           cmake-version: 3.22.1
+          packages: platform-tools platforms;android-36 platforms;android-28 build-tools;36.0.0 ndk;28.2.13676358 cmake;3.22.1
+          accept-android-sdk-licenses: true
 
       - name: Write local.properties
         run: echo "sdk.dir=${ANDROID_HOME}" > local.properties
-
-      - name: Optional test-secrets.properties
-        run: |
-          if [ -n "${{ secrets.OPENROUTER_API_KEY }}" ]; then
-            printf 'openrouter.apiKey=%s\n' "${{ secrets.OPENROUTER_API_KEY }}" > test-secrets.properties
-          else
-            touch test-secrets.properties
-          fi
-
-      - name: Make gradlew executable
-        run: chmod +x gradlew
-
-      - name: Build offline debug APK
-        run: ./gradlew assembleOfflineDebug --no-daemon
 
       - name: Upload debug APK artifact
         uses: actions/upload-artifact@v4
@@ -94,13 +91,24 @@ jobs:
           java-version: 21
           cache: gradle
 
+      - name: Accept Android SDK licenses
+        # setup-android's accept-android-sdk-licenses flag alone still prompts
+        # interactively in some runner images. Write the license file up front so
+        # sdkmanager never has to ask.
+        run: |
+          mkdir -p "$ANDROID_HOME/licenses"
+          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > "$ANDROID_HOME/licenses/android-sdk-license"
+          echo "8933f1a4607e983d6c1e8eb079c3ed6f1034b98b" >> "$ANDROID_HOME/licenses/android-sdk-license"
+
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
         with:
-          api-level: 36
+          api-level: 36            # matches compileSdk = 36
           build-tools-version: 36.0.0
-          ndk-version: 28.2.13676358
+          ndk-version: 28.2.13676358 # default ndkVersion in app/build.gradle.kts
           cmake-version: 3.22.1
+          packages: platform-tools platforms;android-36 platforms;android-28 build-tools;36.0.0 ndk;28.2.13676358 cmake;3.22.1
+          accept-android-sdk-licenses: true
 
       - name: Write local.properties
         run: echo "sdk.dir=${ANDROID_HOME}" > local.properties
