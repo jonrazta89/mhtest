@@ -63,14 +63,14 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x gradlew
 
-      - name: Build offline debug APK
-        run: ./gradlew assembleOfflineDebug --no-daemon
+      - name: Build online debug APK
+        run: ./gradlew assembleOnlineDebug --no-daemon
 
       - name: Upload debug APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-offline-debug-apk
-          path: app/build/outputs/apk/offline/debug/app-offline-debug.apk
+          name: app-online-debug-apk
+          path: app/build/outputs/apk/online/debug/app-online-debug.apk
           retention-days: 30
           if-no-files-found: error
 
@@ -144,20 +144,20 @@ jobs:
           fi
           echo "Release signing secrets are present; building signed release APK."
 
-      - name: Build offline release APK
+      - name: Build online release APK
         if: env.MH_UPLOAD_STORE_FILE != ''
         env:
           MH_UPLOAD_STORE_FILE: ${{ secrets.MH_UPLOAD_STORE_FILE }}
           MH_UPLOAD_STORE_PASSWORD: ${{ secrets.MH_UPLOAD_STORE_PASSWORD }}
           MH_UPLOAD_KEY_ALIAS: ${{ secrets.MH_UPLOAD_KEY_ALIAS }}
           MH_UPLOAD_KEY_PASSWORD: ${{ secrets.MH_UPLOAD_KEY_PASSWORD }}
-        run: ./gradlew assembleOfflineRelease --no-daemon
+        run: ./gradlew assembleOnlineRelease --no-daemon
 
       - name: Upload release APK artifact
         if: env.MH_UPLOAD_STORE_FILE != ''
         uses: actions/upload-artifact@v4
         with:
-          name: app-offline-release-apk
-          path: app/build/outputs/apk/offline/release/app-offline-release.apk
+          name: app-online-release-apk
+          path: app/build/outputs/apk/online/release/app-online-release.apk
           retention-days: 30
           if-no-files-found: error
