@@ -85,6 +85,11 @@ jobs:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      MH_UPLOAD_STORE_FILE: ${{ secrets.MH_UPLOAD_STORE_FILE }}
+      MH_UPLOAD_STORE_PASSWORD: ${{ secrets.MH_UPLOAD_STORE_PASSWORD }}
+      MH_UPLOAD_KEY_ALIAS: ${{ secrets.MH_UPLOAD_KEY_ALIAS }}
+      MH_UPLOAD_KEY_PASSWORD: ${{ secrets.MH_UPLOAD_KEY_PASSWORD }}
 
     steps:
       - name: Checkout repository
@@ -140,7 +145,7 @@ jobs:
           echo "Release signing secrets are present; building signed release APK."
 
       - name: Build offline release APK
-        if: secrets.MH_UPLOAD_STORE_FILE != ''
+        if: env.MH_UPLOAD_STORE_FILE != ''
         env:
           MH_UPLOAD_STORE_FILE: ${{ secrets.MH_UPLOAD_STORE_FILE }}
           MH_UPLOAD_STORE_PASSWORD: ${{ secrets.MH_UPLOAD_STORE_PASSWORD }}
@@ -149,7 +154,7 @@ jobs:
         run: ./gradlew assembleOfflineRelease --no-daemon
 
       - name: Upload release APK artifact
-        if: secrets.MH_UPLOAD_STORE_FILE != ''
+        if: env.MH_UPLOAD_STORE_FILE != ''
         uses: actions/upload-artifact@v4
         with:
           name: app-offline-release-apk
