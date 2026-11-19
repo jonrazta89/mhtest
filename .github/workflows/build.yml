@@ -65,13 +65,40 @@ jobs:
       - name: Build online debug APK
         run: ./gradlew assembleOnlineDebug --no-daemon
 
-      - name: Upload debug APK artifact
+      - name: Upload online debug APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-online-debug-apk
           path: app/build/outputs/apk/online/debug/app-online-debug.apk
           retention-days: 30
           if-no-files-found: error
+
+      - name: Build offline debug APK
+        run: ./gradlew assembleOfflineDebug --no-daemon
+
+      - name: Upload offline debug APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-offline-debug-apk
+          path: app/build/outputs/apk/offline/debug/app-offline-debug.apk
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Download runtime bundles
+        run: |
+          # The offline flavor bundles runtime tar.zst assets from
+          # dist/runtime-bundles. They are published as GitHub Release
+          # assets; fetch them so the offline build has its sources.
+          mkdir -p dist/runtime-bundles
+          python3 -c "
+          import json, urllib.request
+          base = 'https://github.com/techjarves/Mobile-Harness/releases/download/runtime-2026.09.4/'
+          m = json.load(open('dist/runtime-bundles/manifest.json'))
+          for name, b in m['bundles'].items():
+              url = base + b['file']
+              print('Downloading', url)
+              urllib.request.urlretrieve(url, 'dist/runtime-bundles/' + b['file'])
+          "
 
   #----------------------------------------------------------------------
   # Release build — signed with the "upload" signing config.
